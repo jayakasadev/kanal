@@ -8,7 +8,8 @@ use core::{
     task::{Poll, Waker},
     time::Duration,
 };
-use std::{thread::Thread, time::Instant};
+use std::thread::Thread;
+use std::ops::Sub;
 
 use branches::{likely, unlikely};
 
@@ -168,7 +169,7 @@ impl<T> Signal<T> {
     }
 
     /// Waits for the signal event in sync mode with a timeout
-    pub(crate) fn wait_timeout(&self, until: Instant) -> bool {
+    pub(crate) fn wait_timeout(&self, until: chrono::DateTime<chrono::Utc>) -> bool {
         let v = self.state.load(Ordering::Relaxed);
         if likely(v < LOCKED) {
             fence(Ordering::Acquire);
@@ -186,11 +187,11 @@ impl<T> Signal<T> {
                     fence(Ordering::Acquire);
                     return v == UNLOCKED;
                 }
-                let now = Instant::now();
+                let now = chrono::Utc::now();
                 if now >= until {
                     return self.state.load(Ordering::Acquire) == UNLOCKED;
                 }
-                std::thread::park_timeout(until - now);
+                std::thread::park_timeout(until.sub(now).to_std().unwrap());
             },
             Err(v) => v == UNLOCKED,
         }

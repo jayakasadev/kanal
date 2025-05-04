@@ -8,6 +8,7 @@ use core::{
     sync::atomic::{AtomicU32, AtomicU8, AtomicUsize, Ordering},
     time::Duration,
 };
+use core::ops::Add;
 use std::thread;
 
 use branches::{likely, unlikely};
@@ -238,13 +239,13 @@ pub(crate) fn spin_option_yield_only<T>(
 ) -> Option<T> {
     // exit early if predicate is already satisfied
     return_if_some!(predicate());
-    let timeout = std::time::Instant::now().checked_add(Duration::from_micros(spin_micros))?;
+    let timeout = chrono::Utc::now().add(Duration::from_micros(spin_micros));
     loop {
         for _ in 0..32 {
             yield_os();
             return_if_some!(predicate());
         }
-        if std::time::Instant::now() >= timeout {
+        if chrono::Utc::now() >= timeout {
             return None;
         }
     }

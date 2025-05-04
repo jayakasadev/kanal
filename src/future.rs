@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use crate::{
     internal::{acquire_internal, Internal},
     pointer::KanalPtr,

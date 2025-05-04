@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![warn(missing_docs, missing_debug_implementations)]
+extern crate alloc;
 
 pub(crate) mod backoff;
 pub(crate) mod internal;
@@ -23,7 +24,7 @@ use core::{
     mem::{needs_drop, size_of, MaybeUninit},
     time::Duration,
 };
-use std::time::Instant;
+use core::ops::Add;
 
 use branches::unlikely;
 use internal::{acquire_internal, try_acquire_internal, Internal};
@@ -755,7 +756,7 @@ impl<T> Sender<T> {
     /// ```
     #[inline(always)]
     pub fn send_timeout(&self, data: T, duration: Duration) -> Result<(), SendErrorTimeout> {
-        let deadline = Instant::now().checked_add(duration).unwrap();
+        let deadline = chrono::Utc::now().add(duration);
         let mut internal = acquire_internal(&self.internal);
         if unlikely(internal.recv_count == 0) {
             let send_count = internal.send_count;
@@ -839,7 +840,7 @@ impl<T> Sender<T> {
         if data.is_none() {
             panic!("send data option is None");
         }
-        let deadline = Instant::now().checked_add(duration).unwrap();
+        let deadline = chrono::Utc::now().add(duration);
         let mut internal = acquire_internal(&self.internal);
         if unlikely(internal.recv_count == 0) {
             let send_count = internal.send_count;
@@ -1125,7 +1126,7 @@ impl<T> Receiver<T> {
     /// Tries receiving from the channel within a duration
     #[inline(always)]
     pub fn recv_timeout(&self, duration: Duration) -> Result<T, ReceiveErrorTimeout> {
-        let deadline = Instant::now().checked_add(duration).unwrap();
+        let deadline = chrono::Utc::now().add(duration);
         let mut internal = acquire_internal(&self.internal);
         if unlikely(internal.recv_count == 0) {
             return Err(ReceiveErrorTimeout::Closed);
@@ -1142,7 +1143,7 @@ impl<T> Receiver<T> {
             // Safety: it's safe to receive from owned signal once
             unsafe { Ok(p.recv()) }
         } else {
-            if unlikely(Instant::now() > deadline) {
+            if chrono::Utc::now() > deadline {
                 return Err(ReceiveErrorTimeout::Timeout);
             }
             if unlikely(internal.send_count == 0) {
