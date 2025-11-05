@@ -9,7 +9,7 @@ use core::{
     time::Duration,
 };
 use std::thread::Thread;
-use std::ops::Sub;
+use std::ops::{Add, Sub};
 
 use branches::{likely, unlikely};
 
@@ -124,8 +124,8 @@ impl<T> Signal<T> {
             fence(Ordering::Acquire);
             return v == UNLOCKED;
         }
-        let now = Instant::now();
-        let spin_timeout = now.checked_add(Duration::from_micros(25)).unwrap_or(now);
+        let now = chrono::Utc::now();
+        let spin_timeout = now.add(Duration::from_micros(25));
         // 25 microseconds or 256 os yields, whichever happens first
         for _ in 0..4 {
             for _ in 0..64 {
@@ -136,7 +136,7 @@ impl<T> Signal<T> {
                     return v == UNLOCKED;
                 }
             }
-            if unlikely(Instant::now() >= spin_timeout) {
+            if unlikely(chrono::Utc::now() >= spin_timeout) {
                 break;
             }
         }
